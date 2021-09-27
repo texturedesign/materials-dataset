@@ -6,6 +6,7 @@ import re
 import itertools
 import collections
 
+import PIL.Image
 
 
 class Material:
@@ -13,12 +14,28 @@ class Material:
     Container for the files and data making up a PBR material.
     """
 
-    def __init__(self, filenames: dict):
+    CHANNELS = {
+        'diffuse': 3,
+        'normal': 3,
+    }
+
+    def __init__(self, tags: set, filenames: dict):
         assert type(filenames) == dict
+        self.tags = tags
         self.filenames = filenames
 
     def load(self):
-        raise NotImplementedError
+        for key, filename in self.filenames.items():
+            assert os.path.isfile(filename)
+            img = PIL.Image.open(filename)
+
+            ch = self.CHANNELS.get(key, 1)
+            if ch == 3:
+                img = img.convert("RGB")
+            if ch == 1:
+                img = img.convert("L")
+
+            assert len(img.getbands()) == ch
 
 
 class FileSpec:
@@ -62,11 +79,13 @@ class MaterialBuilder:
     ]
 
     def __init__(self,
+        root_path: str,
         required: set = {'diffuse', 'albedo'},
         extensions: str = '(jpg|png|jpeg|bmp|tga|tif|tiff)',
         exclude: tuple = ('.DS_Store', 'Thumbs.db', '(?i:preview)', '(?i:thumb)'),
         separators: str = '[-_ ]?'
     ):
+        self.root_path = root_path
         self.required = required
         self.extensions = extensions
         self.exclude = exclude
@@ -116,7 +135,27 @@ class MaterialBuilder:
 
         # Now return all the variations of this material in the form of an iterator.
         for keys, values in zip(itertools.repeat(loaded.keys()), itertools.product(*loaded.values())):
-            yield Material(dict(zip(keys, values)))
+            common_path = os.path.commonpath([material_path, self.root_path])
+            path = material_path[len(common_path):]
+            tags = self.split_words(path)
+            yield Material(tags=tags, filenames=dict(zip(keys, values)))
+
+    def split_words(self, path):
+        """
+        Extract unique tags from a path by splitting out words with a regular expression.
+        """
+        re_words = re.compile(r'''
+            [A-Z]+(?=[A-Z][a-z]) |  # Uppercase before capitalized word
+            [A-Z]?[a-z]+ |          # Capitalized words
+            [A-Z]+ |                # All uppercase words
+            \d+[A-Za-z]* |          # Mixed identifiers
+            \d+                     # Numbers
+        ''', re.VERBOSE)
+
+        def _exclude(w):
+            if w[0].isnumeric(): return True
+            return re.match(self.extensions, w, re.IGNORECASE)
+        return {w.lower() for w in set(re_words.findall(path)) if not _exclude(w)}
 
     def _scan_files(self, material_path):
         """
