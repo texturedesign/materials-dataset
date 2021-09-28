@@ -15,14 +15,16 @@ class Material:
     """
 
     CHANNELS = {
-        'diffuse': 3,
-        'normal': 3,
+        "diffuse": 3,
+        "normal": 3,
     }
 
-    def __init__(self, tags: set, filenames: dict):
-        assert type(filenames) == dict
+    def __init__(self, filenames: dict, uuid=None, url: str = None, tags: set = {}):
+        self.uuid = uuid
+        self.url = url
         self.tags = tags
         self.filenames = filenames
+        self.images = {}
 
     def load(self):
         for key, filename in self.filenames.items():
@@ -36,6 +38,13 @@ class Material:
                 img = img.convert("L")
 
             assert len(img.getbands()) == ch
+            self.images[key] = img
+
+    def export(self, path, format="jpg", quality=72):
+        os.makedirs(path, exist_ok=True)
+
+        for key, image in self.images.items():
+            image.save(os.path.join(path, f"{key}.{format}"), quality=quality)
 
 
 class FileSpec:
@@ -46,52 +55,53 @@ class FileSpec:
     The first item in the list is considered the `name` of the property.
     """
 
-    def __init__(self, *stubs : list):
+    def __init__(self, *stubs: list):
         self.name = stubs[0]
         self.stubs = [s if isinstance(s, tuple) else (s,) for s in stubs]
 
 
-class MaterialBuilder:
+class FileScanner:
     """
     Creates one or more Material objects from the specified folder.
     """
 
     PROPERTIES = [
-        FileSpec('diffuse', ('base', 'color',), 'color', 'col', 'albedo', 'diff', 'dif', 'alb', 'd'),
-        FileSpec('normal', ('normal', 'gl'), ('nor', 'gl'), 'norm', 'nrm', 'nor', 'n'),
-        FileSpec('roughness', 'rough', 'rou', 'r'),
-        FileSpec('occlusion', ('ambient', 'occlusion'), 'occ', 'ao'),
-        FileSpec('displacement', 'height', 'disp', 'dis', 'h'),
-        FileSpec('bump'),
-        FileSpec('metalness', 'metallness', 'metallic', 'metal', 'mtl', 'm'),
-        FileSpec('opacity', 'translucent'),
-        FileSpec('specular', 'spec'),
-        FileSpec('glossiness', 'gloss'),
-        FileSpec('smoothness'),
-        FileSpec('reflection', 'reflect'),
-        FileSpec('specularLevel', ('specular', 'level')),
-        FileSpec('emissive', 'emission'),
-        FileSpec('scattering', 'subsurface'),
-        FileSpec('idmask', 'id'),
-        FileSpec('edge'),
-        FileSpec('arm'),
-        FileSpec('ref'),
+        FileSpec("diffuse", ("base", "color",), "color", "col", "albedo", "diff", "dif", "alb", "d"),
+        FileSpec("normal", ("normal", "gl"), ("nor", "gl"), "norm", "nrm", "nor", "n"),
+        FileSpec("roughness", "rough", "rou", "r"),
+        FileSpec("occlusion", ("ambient", "occlusion"), "occ", "ao"),
+        FileSpec("displacement", "height", "disp", "dis", "h"),
+        FileSpec("bump"),
+        FileSpec("metalness", "metallness", "metallic", "metal", "mtl", "m"),
+        FileSpec("opacity", "translucent"),
+        FileSpec("specular", "spec"),
+        FileSpec("glossiness", "gloss"),
+        FileSpec("smoothness"),
+        FileSpec("reflection", "reflect"),
+        FileSpec("specularLevel", ("specular", "level")),
+        FileSpec("emissive", "emission"),
+        FileSpec("scattering", "subsurface"),
+        FileSpec("idmask", "id"),
+        FileSpec("edge"),
+        FileSpec("arm"),
+        FileSpec("ref"),
     ]
 
-    def __init__(self,
-        root_path: str,
-        required: set = {'diffuse', 'albedo'},
-        extensions: str = '(jpg|png|jpeg|bmp|tga|tif|tiff)',
-        exclude: tuple = ('.DS_Store', 'Thumbs.db', '(?i:preview)', '(?i:thumb)'),
-        separators: str = '[-_ ]?'
+    def __init__(
+        self,
+        required: set = {"diffuse", "albedo"},
+        extensions: str = "(jpg|png|jpeg|bmp|tga|tif|tiff)",
+        exclude: tuple = ("\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)"),
+        separators: str = "[-_ ]?",
+        allow_variations=True,
     ):
-        self.root_path = root_path
         self.required = required
         self.extensions = extensions
         self.exclude = exclude
         self.separators = separators
+        self.allow_variations = allow_variations
 
-    def from_files(self, material_path):
+    def from_path(self, material_path):
         """
         An iterator that builds one or more Materials from the specified path.
         """
@@ -99,10 +109,14 @@ class MaterialBuilder:
         # Find all the files in the folder that aren't excluded and have the correct extension.
         prefix, files = self._scan_files(material_path)
         if len(files) == 0:
-            raise FileNotFoundError("MATERIAL_EMPTY_DIRECTORY", f"No image files found in directory.")
+            raise FileNotFoundError(
+                "MATERIAL_EMPTY_DIRECTORY", f"No image files found in directory."
+            )
 
         # Prepare a list of regexp and sort by length: most specific files are to be matched first.
-        patterns = itertools.chain([(prop, p) for prop in self.PROPERTIES for p in self._make_regexp(prop)])
+        patterns = itertools.chain(
+            [(prop, p) for prop in self.PROPERTIES for p in self._make_regexp(prop)]
+        )
         patterns = sorted(patterns, key=lambda p: len(p[1]), reverse=True)
 
         # Iterate over all the sorted patterns and load the materials one by one.
@@ -115,12 +129,24 @@ class MaterialBuilder:
 
             # If there are multiple matches, allow variations as long as they are numbered.
             if len(matches) > 1:
+                if not self.allow_variations:
+                    raise FileNotFoundError(
+                        "MATERIAL_NO_VARIATIONS",
+                        "Variations were disabled for this material.",
+                    )
+
                 match_prefix = os.path.commonprefix(matches)
                 match_suffix = os.path.commonprefix([m[::-1] for m in matches])
-                match_stub = [f[len(match_prefix):][:-len(match_suffix)] for f in matches]
+                match_stub = [
+                    f[len(match_prefix) :][: -len(match_suffix)] for f in matches
+                ]
 
                 if not all([s.isnumeric() for s in match_stub]):
-                    raise FileNotFoundError("MATERIAL_FILE_CONFLICT", f"Multiple conflicting matches found for `{prop.name}`", matches)
+                    raise FileNotFoundError(
+                        "MATERIAL_FILE_CONFLICT",
+                        f"Multiple conflicting matches found for `{prop.name}`",
+                        matches,
+                    )
 
             # Add each match to the list of variations for this material.
             for match in matches:
@@ -131,36 +157,23 @@ class MaterialBuilder:
         # Check all files were found for required properties.
         for prop in self.PROPERTIES:
             if prop.name in self.required and prop.name not in loaded:
-                raise FileNotFoundError("MATERIAL_FILE_MISSING", f"Missing {prop.name}, remaining {len(files)}", files)
+                raise FileNotFoundError(
+                    "MATERIAL_FILE_MISSING",
+                    f"Missing {prop.name}, remaining {len(files)}",
+                    files,
+                )
 
         # Now return all the variations of this material in the form of an iterator.
-        for keys, values in zip(itertools.repeat(loaded.keys()), itertools.product(*loaded.values())):
-            common_path = os.path.commonpath([material_path, self.root_path])
-            path = material_path[len(common_path):]
-            tags = self.split_words(path)
-            yield Material(tags=tags, filenames=dict(zip(keys, values)))
-
-    def split_words(self, path):
-        """
-        Extract unique tags from a path by splitting out words with a regular expression.
-        """
-        re_words = re.compile(r'''
-            [A-Z]+(?=[A-Z][a-z]) |  # Uppercase before capitalized word
-            [A-Z]?[a-z]+ |          # Capitalized words
-            [A-Z]+ |                # All uppercase words
-            \d+[A-Za-z]* |          # Mixed identifiers
-            \d+                     # Numbers
-        ''', re.VERBOSE)
-
-        def _exclude(w):
-            if w[0].isnumeric(): return True
-            return re.match(self.extensions, w, re.IGNORECASE)
-        return {w.lower() for w in set(re_words.findall(path)) if not _exclude(w)}
+        for keys, values in zip(
+            itertools.repeat(loaded.keys()), itertools.product(*loaded.values())
+        ):
+            yield dict(zip(keys, values))
 
     def _scan_files(self, material_path):
         """
         Load all the files in a specified path that aren't excluded and have the correct extension.
         """
+
         def _exclude(x):
             return any([re.search(excl, x) for excl in self.exclude])
 
@@ -169,14 +182,16 @@ class MaterialBuilder:
 
         def _include(x):
             return re.match("(.+)" + self.extensions, x, flags=re.IGNORECASE)
-        return prefix, [f[len(prefix):] for f in files if _include(f[len(prefix):])]
+
+        return prefix, [f[len(prefix) :] for f in files if _include(f[len(prefix) :])]
 
     def _make_regexp(self, prop):
         """
         Iterator that creates all possible regular expressions for a single property.
         """
         for stub in prop.stubs:
-            yield '.*(^|[-_ ])' + self.separators.join(stub) + '([-_ ].*|[0-9]*)?' + '\.' + self.extensions
+            words = self.separators.join(stub)
+            yield ".*(^|[-_ ])" + words + "([-_ ].*|[0-9]*)?" + "\." + self.extensions
 
     def _match_regexp(self, filenames, pattern):
         """
