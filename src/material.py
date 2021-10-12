@@ -2,10 +2,10 @@
 
 import os
 import re
-
 import itertools
 import collections
 
+import base58
 import PIL.Image
 
 
@@ -17,10 +17,11 @@ class Material:
     CHANNELS = {
         "diffuse": 3,
         "normal": 3,
+        # default: 1,
     }
 
     def __init__(self, filenames: dict, uuid=None, url: str = None, tags: set = {}):
-        self.uuid = uuid
+        self.hash = base58.b58encode(uuid.bytes).decode('ascii')
         self.url = url
         self.tags = tags
         self.filenames = filenames
@@ -39,6 +40,9 @@ class Material:
 
             assert len(img.getbands()) == ch
             self.images[key] = img
+
+    def unload(self):
+        self.images = {}
 
     def export(self, path, format="jpg", quality=72):
         os.makedirs(path, exist_ok=True)
@@ -60,7 +64,7 @@ class FileSpec:
         self.stubs = [s if isinstance(s, tuple) else (s,) for s in stubs]
 
 
-class FileScanner:
+class MaterialScanner:
     """
     Creates one or more Material objects from the specified folder.
     """
@@ -101,9 +105,9 @@ class FileScanner:
         self.separators = separators
         self.allow_variations = allow_variations
 
-    def from_path(self, material_path):
+    def from_directory(self, material_path):
         """
-        An iterator that builds one or more Materials from the specified path.
+        An iterator that builds one or more Materials from the specified directory path.
         """
 
         # Find all the files in the folder that aren't excluded and have the correct extension.
