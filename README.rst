@@ -11,7 +11,7 @@ The script should work with many different sources of materials.  It officially 
 * `AmbientCG <https://ambientcg.com/>`_ — Subscribe to Patreon for cloud drive access.
 * `PolyHaven <https://polyhaven.com/>`_ — For drive access, also subscribe to Patreon.
 
-NOTE: Once you have downloaded the files, you may need to manually rename a few of them if there are warnings or errors.
+NOTE: Once you have downloaded the files to disk, you may need to manually rename a few of them (for specific textures only) if there are warnings or errors.
 
 
 Scripts
@@ -53,8 +53,8 @@ Here is an example configuration file for the data sources:
 
 A short description of what these options do:
 
-* The ``ignore`` option is a list of files that should not be used when scanning for images to use in the material, for example preview renderings.
+* The ``exclude`` option is a lists of regular expressions to filter out paths in the dataset.  In this case, we want to avoid manhole covers and tree stumps since they are objects and not seamless textures.
 
-* The ``exclude`` option is a lists of regular expressions to filter out paths in the dataset.  In this case, we want to avoid manhule covers and tree stumps since they are objects and not seamless textures.
+* The ``ignore`` option is a list of files that should not be used when scanning for images to use in the material, for example preview renderings.
 
 * The ``allow_remaining`` option is also a list of regular expressions to make sure any leftover files that were not recognized by the material scanner are flagged for manual inspection.
