@@ -36,4 +36,4 @@ exclude = [
 
 [scanner]
 ignore = []
-remaining = ['NormalDX']
+allow_remaining = ['NormalDX']
