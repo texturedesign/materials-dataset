@@ -21,7 +21,7 @@ class Material:
     }
 
     def __init__(self, filenames: dict, uuid=None, url: str = None, tags: set = {}):
-        self.hash = base58.b58encode(uuid.bytes).decode('ascii')
+        self.hash = base58.b58encode(uuid.bytes).decode("ascii")
         self.url = url
         self.tags = tags
         self.filenames = filenames
@@ -98,12 +98,14 @@ class MaterialScanner:
         exclude: tuple = ("\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)"),
         separators: str = "[-_ ]?",
         allow_variations=True,
+        allow_remaining=[],
     ):
         self.required = required
         self.extensions = extensions
         self.exclude = exclude
         self.separators = separators
         self.allow_variations = allow_variations
+        self.allow_remaining = allow_remaining
 
     def from_directory(self, material_path):
         """
@@ -136,7 +138,7 @@ class MaterialScanner:
                 if not self.allow_variations:
                     raise FileNotFoundError(
                         "MATERIAL_NO_VARIATIONS",
-                        "Variations were disabled for this material.",
+                        "Variations found but disabled for this scanner.",
                     )
 
                 match_prefix = os.path.commonprefix(matches)
@@ -166,6 +168,18 @@ class MaterialScanner:
                     f"Missing {prop.name}, remaining {len(files)}",
                     files,
                 )
+
+        # Check all images were assigned to properties.
+        def _exclude(x):
+            return any([re.search(a, x) for a in self.allow_remaining])
+
+        remaining = [f for f in files if not _exclude(f)]
+        if len(remaining) > 0:
+            raise FileNotFoundError(
+                "MATERIAL_FILE_UNKNOWN",
+                f"Remaining {len(remaining)} unused files not allowed",
+                remaining,
+            )
 
         # Now return all the variations of this material in the form of an iterator.
         for keys, values in zip(
