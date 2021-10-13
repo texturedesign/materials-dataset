@@ -18,7 +18,7 @@ class MaterialLibrary:
         self.excludes = excludes
         self.stopwords = stopwords
 
-    def __iter__(self):
+    def find_directories(self):
         """
         Iterator that recursively scans through all the subfolders of the library and returns
         only leaf nodes with files inside that match the specified patterns.
@@ -57,12 +57,12 @@ class MaterialLibrary:
         """
         re_words = re.compile(
             r"""
-            [A-Z]+(?=[A-Z][a-z]) |  # Uppercase before capitalized word
-            [A-Z]?[a-z]+ |          # Capitalized words
-            [A-Z]+ |                # All uppercase words
-            \d+[A-Za-z]* |          # Mixed identifiers
-            \d+                     # Numbers
-        """,
+                [A-Z]+(?=[A-Z][a-z]) |  # Uppercase before capitalized word
+                [A-Z]?[a-z]+ |          # Capitalized words
+                [A-Z]+ |                # All uppercase words
+                \d+[A-Za-z]* |          # Mixed identifiers
+                \d+                     # Numbers
+            """,
             re.VERBOSE,
         )
 
