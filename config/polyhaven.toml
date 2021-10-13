@@ -1,0 +1,8 @@
+[library]
+name = "polyhaven.com"
+glob = "../TextureHaven/4k/*"
+exclude = []
+
+[scanner]
+ignore = ["rough_ao_"]
+remaining = ["^nor(mal)?_dx_", "_diff_"]

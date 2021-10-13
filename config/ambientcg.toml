@@ -1,0 +1,39 @@
+[library]
+name = "ambientcg.com"
+glob = "../AmbientCG/*/4K-JPG"
+exclude = [
+    '^Alpha_Brush',
+    '^AsphaltDamage',
+    '^ChristmasTreeOrnament',
+    '^ColdCuts',
+    '^Facade',
+    '^Fingerprints',
+    '^FlowerSet',
+    '^Foliage',
+    '^Footsteps',
+    '^Grate',
+    '^Leaf',
+    '^LeafSet',
+    '^Leaking',
+    '^Manhole',
+    '^Painting',
+    '^PavingEdge',
+    '^PaymentCard',
+    '^PineNeedles',
+    '^Road',
+    '^ScatteredLeaves',
+    '^Scratches',
+    '^ScrewSet',
+    '^Sign',
+    '^Smear',
+    '^SolarPanel',
+    '^Sticker',
+    '^SurfaceImperfections',
+    '^Tape',
+    '^TreeEnd',
+    '^Vent',
+]
+
+[scanner]
+ignore = []
+remaining = ['NormalDX']
