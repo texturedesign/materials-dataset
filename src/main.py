@@ -55,7 +55,7 @@ class MaterialExporter:
             scanner = MaterialScanner(
                 exclude=self.ignore_default + cscan.get("ignore", []),
                 allow_variations=False,
-                allow_remaining=cscan.get("remaining", []),
+                allow_remaining=cscan.get("allow_remaining", []),
             )
 
             library = MaterialLibrary(
@@ -67,7 +67,7 @@ class MaterialExporter:
                         yield filenames, info
 
                 except FileNotFoundError as exc:
-                    print("ERROR:", path, exc)
+                    print("WARNING:", path, exc)
                     continue
 
 
