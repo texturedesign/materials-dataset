@@ -58,3 +58,15 @@ A short description of what these options do:
 * The ``ignore`` option is a list of files that should not be used when scanning for images to use in the material, for example preview renderings.
 
 * The ``allow_remaining`` option is also a list of regular expressions to make sure any leftover files that were not recognized by the material scanner are flagged for manual inspection.
+
+
+Roadmap
+-------
+
+For the short-term, see the `project Issues <https://github.com/texturedesign/materials-dataset/issues>`_ for tasks that are in discussion.  At the high-level, we're planning in this direction:
+
+1. **Standardization** — Ensuring all materials are consistent and with standardized units, in particular for the displacement maps.  Adding tests to catch possible problems with new content.
+2. **Annotation** — Manually labeling the materials (e.g. procedural, scan-based), tagging the content (e.g. rock / gravel / sand), adding metrics (e.g. area size), and adding full descriptions.
+3. **Augmentation** — Creating new materials and annotations from existing ones in the dataset to help cover new parts of the design space, using a combination of algorithms and human expertise.
+
+**HIRING!** ``texture·design`` is looking for a Python programmer as Data Engineer to work on this repository and more!  If this sounds interesting to you, contact us via the `email address <https://github.com/texturedesign>`_ on the organization page.
