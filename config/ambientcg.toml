@@ -1,6 +1,6 @@
 [library]
 name = "ambientcg.com"
-glob = "../AmbientCG/*/4K-JPG"
+glob = "data/AmbientCG/*/4K-JPG"
 exclude = [
     '^Alpha_Brush',
     '^AsphaltDamage',
@@ -36,4 +36,6 @@ exclude = [
 
 [scanner]
 ignore = []
-allow_remaining = ['NormalDX']
+allow_remaining = [
+    '^NormalDX',
+]
