@@ -23,7 +23,7 @@ class MaterialExporter:
         self.datasets = datasets
         self.export_path = export_path
         self.export_resolution = export_resolution
-        self.export_format = export_format.upper()
+        self.export_format = export_format
         self.ignore_default = ["\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)"]
 
     def export_material(self, args):
@@ -32,7 +32,7 @@ class MaterialExporter:
         mat = Material(filenames, **info)
         res = max(self.export_resolution) // 1024
 
-        export_path = self.export_path / mat.hash / f"{res}K-{self.export_format}"
+        export_path = self.export_path / mat.hash / f"{res}K-{self.export_format.upper()}"
         if os.path.exists(export_path):
             return mat
 
@@ -45,7 +45,7 @@ class MaterialExporter:
         if diffuse_size != self.export_resolution:
             return None
 
-        mat.export(export_path, format=self.export_format)
+        mat.export(export_path, format=self.export_format.lower())
         mat.unload()
         return mat
 
@@ -96,7 +96,7 @@ def main(library_configs, export_path, export_resolution, export_format):
         )
 
     json.dump(index, open(f"{export_path}/index.json", "w"))
-    print("TOTAL:", len(index))
+    print(f"Exported {len(index)} materials to `{export_path}` directory.")
 
 
 if __name__ == "__main__":
