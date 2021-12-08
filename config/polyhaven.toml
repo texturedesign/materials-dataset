@@ -1,6 +1,6 @@
 [library]
 name = "polyhaven.com"
-glob = "data/PolyHaven/4k/*"
+glob = "../data/PolyHaven/4k/*"
 exclude = []
 
 [scanner]

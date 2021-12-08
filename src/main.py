@@ -1,9 +1,18 @@
 # Copyright (c) 2021, texture·design.
-
+import glob
 import os
 import json
 import pathlib
 import multiprocessing
+
+import random
+import imageio
+
+import numpy
+import torch
+import torch.nn.functional as F
+
+from pathlib import Path
 
 import toml
 import click
@@ -11,6 +20,7 @@ import click
 from material import Material, MaterialScanner
 from library import MaterialLibrary
 
+from compute_displacement import normalize
 
 class MaterialExporter:
     def __init__(
@@ -47,7 +57,11 @@ class MaterialExporter:
 
         mat.export(export_path, format=self.export_format.lower())
         mat.unload()
+        material = mat.hash
+        # Normalize displacement maps
+        normalize(str(export_path), material)
         return mat
+
 
     def find_all_materials(self):
         for config in self.datasets:
@@ -76,10 +90,11 @@ class MaterialExporter:
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
+
 def main(library_configs, export_path, export_resolution, export_format):
     libraries = [toml.load(cfg) for cfg in library_configs]
 
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(1)
     exporter = MaterialExporter(
         libraries, export_path, export_resolution, export_format
     )
@@ -98,6 +113,7 @@ def main(library_configs, export_path, export_resolution, export_format):
     json.dump(index, open(f"{export_path}/index.json", "w"))
     print(f"Exported {len(index)} materials to `{export_path}` directory.")
 
+    # exporter.normalize_displacement()
 
 if __name__ == "__main__":
     main()
