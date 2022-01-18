@@ -3,6 +3,8 @@ import glob
 import json
 import random
 import imageio
+import PIL
+from PIL import ImageFilter
 
 import numpy
 import torch
@@ -14,19 +16,16 @@ from library import MaterialLibrary
 
 imageio.plugins.freeimage.download()
 
-# torch.set_num_threads(1)
-# DATASET_PATH = {"./allcache/*/4K-JPG/"}
-# DATASET_PATH = export_path
-# files = glob.glob(DATASET_PATH, recursive=True)
 import random
-# print (files)
-# random.shuffle(files)
 
 def normalize(export_path, material):
 
+    print('|||NORMALIZING DISPLACEMENT MAPS|||')
+
+
     for path in glob.glob(export_path, recursive=True):
-        # material = path.split(os.path.sep)[-3]
-        print('Normalizing displacement map for:', material)
+        print('Normalizing displacement map for material', material)
+
         try:
             disp = torch.tensor(
                 imageio.imread(f"{path}/displacement.jpg").astype(numpy.float32),
@@ -58,8 +57,14 @@ def normalize(export_path, material):
         try:
             norm = imageio.imread(f"{path}/normal.jpg")
         except ValueError as exc:
-            # print('ERROR', meta_file, '-', exc)
-            norm = imageio.imread(f"{path}/normal.jpg")
+            print('ERROR')
+
+        # NORMAL Pre-processing: Apply blur to normal to decrease complexity in detail.
+        normal_src = PIL.Image.fromarray(norm)
+        normal_src = normal_src.filter(ImageFilter.GaussianBlur(radius=10))
+        data = normal_src.getdata()
+        normal_src = numpy.array(data).reshape(data.size[::-1]+(-1,))
+        norm = normal_src.astype(numpy.float32)
 
         if norm.dtype == numpy.uint16:
             norm = norm.astype(numpy.float32) / 256.0
@@ -82,33 +87,32 @@ def normalize(export_path, material):
 
         assert disp.shape[:2] == norm.shape[:2]
 
-        lr = 0.001
+        lr = 1e-3
 
         opt = torch.optim.Adam([weight], lr=lr)
 
-        for i in range(15):
+        for i in range(25):
             opt.zero_grad()
 
-            new_disp = disp * weight[0] + bump * weight[1]
+            new_disp = disp * weight[0].abs() + bump * weight[1].abs()
             d_x = new_disp[:, 1:] - new_disp[:, :-1]
             d_x = d_x / torch.sqrt(1.0 + d_x ** 2.0)
-            loss_x = F.mse_loss(d_x, norm[:, :-1, 0] * 1.0)
+            loss_x = F.mse_loss(d_x, norm[:, :-1, 0] * -1.0)
             loss_x.backward()
             del d_x
 
-            new_disp = disp * weight[0] + bump * weight[1]
+            new_disp = disp * weight[0].abs() + bump * weight[1].abs()
             d_y = new_disp[1:, :] - new_disp[:-1, :]
             d_y = d_y / torch.sqrt(1.0 + d_y ** 2.0)
             loss_y = F.mse_loss(d_y, norm[:-1, :, 1] * 1.0)
-
             loss_y.backward()
             del d_y
+
             # print((loss_x).item(), (loss_y).item())
             # print((loss_x + loss_y).item())
 
             del new_disp
             opt.step()
-
 
         with torch.no_grad():
 
@@ -117,7 +121,7 @@ def normalize(export_path, material):
             print(weight[0].abs().item(), weight[1].abs().item())
             new_disp = disp * weight[0].abs()
 
-            print("New displacement values for", material, "-","Min:", new_disp.min(), "Max:", new_disp.max())
+            print("New displacement values for material", material, "-","Min:", new_disp.min(), "Max:", new_disp.max())
             computed = 32768.0 + k * new_disp
             assert (computed >= 0).all() and (computed <= 65535).all()
 
@@ -125,4 +129,4 @@ def normalize(export_path, material):
                 f"{path}/disp_new_4k.png",
                 computed.cpu().numpy().astype(numpy.uint16),
                 format="PNG-FI"
-            )
+                )
