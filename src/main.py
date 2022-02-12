@@ -30,8 +30,8 @@ class MaterialExporter:
 
         self.operations = []
         for op in operations:
-            fm = importlib.import_module(f'ops.{op}')
-            self.operations.append(fm.process)
+            mod = importlib.import_module(f"ops.{op}")
+            self.operations.append(mod.process)
 
     def export_material(self, args):
         (filenames, info) = args
@@ -83,12 +83,19 @@ class MaterialExporter:
 
 @click.command()
 @click.argument("library-configs", nargs=-1, required=True)
-@click.option("-o", "--operations", type=list[str], default=[])
+@click.option("-o", "--operations", type=str, multiple=True, default=[])
 @click.option("-p", "--processes", type=int, default=None)
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
-def main(library_configs, operations, processes, export_path, export_resolution, export_format):
+def main(
+    library_configs,
+    operations,
+    processes,
+    export_path,
+    export_resolution,
+    export_format,
+):
     libraries = [toml.load(cfg) for cfg in library_configs]
 
     pool = multiprocessing.Pool(processes)
