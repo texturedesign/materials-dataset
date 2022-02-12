@@ -3,6 +3,7 @@
 import os
 import json
 import pathlib
+import importlib
 import multiprocessing
 
 import toml
@@ -16,6 +17,7 @@ class MaterialExporter:
     def __init__(
         self,
         datasets: list,
+        operations: list[str],
         export_path: pathlib.Path,
         export_resolution: tuple[int],
         export_format: str,
@@ -25,6 +27,11 @@ class MaterialExporter:
         self.export_resolution = export_resolution
         self.export_format = export_format
         self.ignore_default = ["\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)"]
+
+        self.operations = []
+        for op in operations:
+            fm = importlib.import_module(f'ops.{op}')
+            self.operations.append(fm.process)
 
     def export_material(self, args):
         (filenames, info) = args
@@ -41,9 +48,12 @@ class MaterialExporter:
         except FileNotFoundError:
             return None
 
-        diffuse_size = mat.images["diffuse"].size
+        diffuse_size = mat.images["diffuse"].shape[:2]
         if diffuse_size != self.export_resolution:
             return None
+
+        for op in self.operations:
+            op(mat)
 
         mat.export(export_path, format=self.export_format.lower())
         mat.unload()
@@ -73,16 +83,17 @@ class MaterialExporter:
 
 @click.command()
 @click.argument("library-configs", nargs=-1, required=True)
+@click.option("-o", "--operations", type=list[str], default=[])
 @click.option("-p", "--processes", type=int, default=None)
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
-def main(library_configs, processes, export_path, export_resolution, export_format):
+def main(library_configs, operations, processes, export_path, export_resolution, export_format):
     libraries = [toml.load(cfg) for cfg in library_configs]
 
     pool = multiprocessing.Pool(processes)
     exporter = MaterialExporter(
-        libraries, export_path, export_resolution, export_format
+        libraries, operations, export_path, export_resolution, export_format
     )
 
     index = []
