@@ -72,14 +72,15 @@ class MaterialExporter:
 
 
 @click.command()
-@click.argument("library-configs", nargs=-1)
+@click.argument("library-configs", nargs=-1, required=True)
+@click.option("-p", "--processes", type=int, default=None)
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
-def main(library_configs, export_path, export_resolution, export_format):
+def main(library_configs, processes, export_path, export_resolution, export_format):
     libraries = [toml.load(cfg) for cfg in library_configs]
 
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(processes)
     exporter = MaterialExporter(
         libraries, export_path, export_resolution, export_format
     )
