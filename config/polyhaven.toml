@@ -5,4 +5,4 @@ exclude = []
 
 [scanner]
 ignore = ["rough_ao_"]
-allow_remaining = ["^nor(mal)?_dx_", "_diff_"]
+allow_remaining = ["^nor(mal)?_dx_", "_diff_", "arm_"]
