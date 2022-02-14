@@ -21,12 +21,14 @@ class MaterialExporter:
         export_path: pathlib.Path,
         export_resolution: tuple[int],
         export_format: str,
+        export_forced: bool,
     ):
         self.datasets = datasets
         self.export_path = export_path
         self.export_resolution = export_resolution
         self.export_format = export_format
-        self.ignore_default = ["\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)"]
+        self.export_forced = export_forced
+        self.ignore_default = ["\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)", "\.pkl$"]
 
         self.operations = []
         for op in operations:
@@ -40,7 +42,7 @@ class MaterialExporter:
         res = max(self.export_resolution) // 1024
 
         export_path = self.export_path / mat.hash / f"{res}K-{self.export_format.upper()}"
-        if os.path.exists(export_path):
+        if os.path.exists(export_path) and not self.export_forced:
             return mat
 
         try:
@@ -88,6 +90,7 @@ class MaterialExporter:
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
+@click.option("--force", type=bool, default=False)
 def main(
     library_configs,
     operations,
@@ -95,12 +98,13 @@ def main(
     export_path,
     export_resolution,
     export_format,
+    force,
 ):
     libraries = [toml.load(cfg) for cfg in library_configs]
 
     pool = multiprocessing.Pool(processes)
     exporter = MaterialExporter(
-        libraries, operations, export_path, export_resolution, export_format
+        libraries, operations, export_path, export_resolution, export_format, force
     )
 
     index = []
