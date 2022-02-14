@@ -46,9 +46,12 @@ class Material:
 
             ch = self.CHANNELS.get(key, 1)
             if ch == 3:
-                assert img.shape[2] == 3, f"Expecting three channels: {filename}."
+                if img.shape[2] == 1:
+                    img = img.repeat((1, 1, 3))
+                assert img.shape[2] in (3, 4), f"Expecting three channels, got {img.shape[2]}: {filename}."
+                img = img[:, :, :3]
             if ch == 1:
-                img = img.mean(dim=2, keepdim=True)
+                img = img[:, :, :3].mean(dim=2, keepdim=True)
 
             self.images[key] = img
 
