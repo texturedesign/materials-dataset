@@ -110,9 +110,13 @@ def main(
         if material is None:
             continue
 
-        index.append(
-            dict(uuid=material.hash, url=material.url, tags=list(material.tags),)
+        data = material.extra
+        data.update(
+            uuid=material.hash,
+            url=material.url,
+            tags=list(material.tags)
         )
+        index.append(data)
 
     json.dump(index, open(f"{export_path}/index.json", "w"))
     print(f"Exported {len(index)} materials to `{export_path}` directory.")

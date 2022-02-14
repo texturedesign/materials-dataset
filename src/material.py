@@ -36,6 +36,7 @@ class Material:
         self.tags = tags
         self.filenames = filenames
         self.images = {}
+        self.extra = {}
 
     def load(self):
         for key, filename in self.filenames.items():
