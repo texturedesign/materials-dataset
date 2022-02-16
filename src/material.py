@@ -5,18 +5,8 @@ import re
 import itertools
 import collections
 
-import torch
 import base58
-import imageio
-
-
-def imread(filename):
-    img = torch.from_numpy(imageio.imread(filename))
-    if img.ndim == 2:
-        img = img.unsqueeze(-1)
-    if img.dtype == torch.int16:
-        raise NotImplementedError("16-bit images not yet supported.")
-    return img.to(torch.float16)
+import PIL.Image
 
 
 class Material:
@@ -36,23 +26,19 @@ class Material:
         self.tags = tags
         self.filenames = filenames
         self.images = {}
-        self.extra = {}
 
     def load(self):
         for key, filename in self.filenames.items():
             assert os.path.isfile(filename)
-
-            img = imread(filename)
+            img = PIL.Image.open(filename)
 
             ch = self.CHANNELS.get(key, 1)
             if ch == 3:
-                if img.shape[2] == 1:
-                    img = img.repeat((1, 1, 3))
-                assert img.shape[2] in (3, 4), f"Expecting three channels, got {img.shape[2]}: {filename}."
-                img = img[:, :, :3]
+                img = img.convert("RGB")
             if ch == 1:
-                img = img[:, :, :3].mean(dim=2, keepdim=True)
+                img = img.convert("L")
 
+            assert len(img.getbands()) == ch
             self.images[key] = img
 
     def unload(self):
@@ -62,8 +48,7 @@ class Material:
         os.makedirs(path, exist_ok=True)
 
         for key, image in self.images.items():
-            dest = os.path.join(path, f"{key}.{format}")
-            imageio.imwrite(dest, image.to(torch.uint8), quality=quality)
+            image.save(os.path.join(path, f"{key}.{format}"), quality=quality)
 
 
 class FileSpec:
@@ -92,7 +77,8 @@ class MaterialScanner:
         FileSpec("displacement", "height", "disp", "dis", "h"),
         FileSpec("bump"),
         FileSpec("metalness", "metallness", "metallic", "metal", "mtl", "m"),
-        FileSpec("opacity", "translucent"),
+        FileSpec("opacity","alpha"),
+        FileSpec("translucent", "trans", "translucency"),
         FileSpec("specular", "spec"),
         FileSpec("glossiness", "gloss"),
         FileSpec("smoothness"),
@@ -102,6 +88,7 @@ class MaterialScanner:
         FileSpec("scattering", "subsurface"),
         FileSpec("idmask", "id"),
         FileSpec("edge"),
+        FileSpec("arm"),
         FileSpec("ref"),
     ]
 
