@@ -103,7 +103,6 @@ class MaterialScanner:
         FileSpec("scattering", "subsurface"),
         FileSpec("idmask", "id"),
         FileSpec("edge"),
-        FileSpec("arm"),
         FileSpec("ref"),
     ]
 
