@@ -1,6 +1,6 @@
 [library]
 name = "ambientcg.com"
-glob = "../data/AmbientCG/*/4K-JPG"
+glob = "data/AmbientCG/*/4K-JPG"
 exclude = [
     '^Alpha_Brush',
     '^AsphaltDamage',

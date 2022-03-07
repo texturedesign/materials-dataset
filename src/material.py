@@ -5,8 +5,18 @@ import re
 import itertools
 import collections
 
+import torch
 import base58
-import PIL.Image
+import imageio
+
+
+def imread(filename):
+    img = torch.from_numpy(imageio.imread(filename))
+    if img.ndim == 2:
+        img = img.unsqueeze(-1)
+    if img.dtype == torch.int16:
+        raise NotImplementedError("16-bit images not yet supported.")
+    return img.to(torch.float16)
 
 
 class Material:
@@ -26,19 +36,23 @@ class Material:
         self.tags = tags
         self.filenames = filenames
         self.images = {}
+        self.extra = {}
 
     def load(self):
         for key, filename in self.filenames.items():
             assert os.path.isfile(filename)
-            img = PIL.Image.open(filename)
+
+            img = imread(filename)
 
             ch = self.CHANNELS.get(key, 1)
             if ch == 3:
-                img = img.convert("RGB")
+                if img.shape[2] == 1:
+                    img = img.repeat((1, 1, 3))
+                assert img.shape[2] in (3, 4), f"Expecting three channels, got {img.shape[2]}: {filename}."
+                img = img[:, :, :3]
             if ch == 1:
-                img = img.convert("L")
+                img = img[:, :, :3].mean(dim=2, keepdim=True)
 
-            assert len(img.getbands()) == ch
             self.images[key] = img
 
     def unload(self):
@@ -48,7 +62,8 @@ class Material:
         os.makedirs(path, exist_ok=True)
 
         for key, image in self.images.items():
-            image.save(os.path.join(path, f"{key}.{format}"), quality=quality)
+            dest = os.path.join(path, f"{key}.{format}")
+            imageio.imwrite(dest, image.to(torch.uint8), quality=quality)
 
 
 class FileSpec:
@@ -88,7 +103,6 @@ class MaterialScanner:
         FileSpec("scattering", "subsurface"),
         FileSpec("idmask", "id"),
         FileSpec("edge"),
-        FileSpec("arm"),
         FileSpec("ref"),
     ]
 

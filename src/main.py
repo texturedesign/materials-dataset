@@ -3,20 +3,13 @@ import glob
 import os
 import json
 import pathlib
+import importlib
 import multiprocessing
-
-import random
-import imageio
-
-import numpy
-import torch
-import torch.nn.functional as F
-
-from pathlib import Path
 
 import toml
 import click
 
+from pathlib import Path
 from material import Material, MaterialScanner
 from library import MaterialLibrary
 
@@ -26,15 +19,23 @@ class MaterialExporter:
     def __init__(
         self,
         datasets: list,
+        operations: list[str],
         export_path: pathlib.Path,
         export_resolution: tuple[int],
         export_format: str,
+        export_forced: bool,
     ):
         self.datasets = datasets
         self.export_path = export_path
         self.export_resolution = export_resolution
         self.export_format = export_format
-        self.ignore_default = ["\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)"]
+        self.export_forced = export_forced
+        self.ignore_default = ["\.DS_Store", "Thumbs\.db", "(?i:preview)", "(?i:thumb)", "\.pkl$"]
+
+        self.operations = []
+        for op in operations:
+            mod = importlib.import_module(f"ops.{op}")
+            self.operations.append(mod.process)
 
     def export_material(self, args):
         (filenames, info) = args
@@ -43,7 +44,7 @@ class MaterialExporter:
         res = max(self.export_resolution) // 1024
 
         export_path = self.export_path / mat.hash / f"{res}K-{self.export_format.upper()}"
-        if os.path.exists(export_path):
+        if os.path.exists(export_path) and not self.export_forced:
             return mat
 
         try:
@@ -51,17 +52,19 @@ class MaterialExporter:
         except FileNotFoundError:
             return None
 
-        diffuse_size = mat.images["diffuse"].size
+        diffuse_size = mat.images["diffuse"].shape[:2]
         if diffuse_size != self.export_resolution:
             return None
 
+        for op in self.operations:
+            op(mat)
+
         mat.export(export_path, format=self.export_format.lower())
         mat.unload()
+
         material = mat.hash
-        # Normalize displacement maps
         normalize(str(export_path), material)
         return mat
-
 
     def find_all_materials(self):
         for config in self.datasets:
@@ -86,17 +89,27 @@ class MaterialExporter:
 
 
 @click.command()
-@click.argument("library-configs", nargs=-1)
+@click.argument("library-configs", nargs=-1, required=True)
+@click.option("-o", "--operations", type=str, multiple=True, default=[])
+@click.option("-p", "--processes", type=int, default=1)
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
-
-def main(library_configs, export_path, export_resolution, export_format):
+@click.option("--force", type=bool, default=False)
+def main(
+    library_configs,
+    operations,
+    processes,
+    export_path,
+    export_resolution,
+    export_format,
+    force,
+):
     libraries = [toml.load(cfg) for cfg in library_configs]
 
-    pool = multiprocessing.Pool(1)
+    pool = multiprocessing.Pool(processes)
     exporter = MaterialExporter(
-        libraries, export_path, export_resolution, export_format
+        libraries, operations, export_path, export_resolution, export_format, force
     )
 
     index = []
@@ -106,14 +119,17 @@ def main(library_configs, export_path, export_resolution, export_format):
         if material is None:
             continue
 
-        index.append(
-            dict(uuid=material.hash, url=material.url, tags=list(material.tags),)
+        data = material.extra
+        data.update(
+            uuid=material.hash,
+            url=material.url,
+            tags=list(material.tags)
         )
+        index.append(data)
 
     json.dump(index, open(f"{export_path}/index.json", "w"))
     print(f"Exported {len(index)} materials to `{export_path}` directory.")
 
-    # exporter.normalize_displacement()
 
 if __name__ == "__main__":
     main()
