@@ -4,5 +4,5 @@ glob = "data/PolyHaven/4k/*"
 exclude = []
 
 [scanner]
-ignore = ["rough_ao_"]
+ignore = ["rough_ao_", "arm_"]
 allow_remaining = ["^nor(mal)?_dx_", "_diff_"]
