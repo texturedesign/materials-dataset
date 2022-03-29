@@ -86,14 +86,14 @@ class MaterialScanner:
 
     PROPERTIES = [
         FileSpec("diffuse", ("base", "color",), "color", "col", "albedo", "diff", "dif", "alb", "d"),
-        FileSpec("normal", ("normal", "gl"), ("nor", "gl"), "norm", "nrm", "nor", "n"),
+        FileSpec("normal", ("normal", "(open)?gl"), ("nor", "gl"), "norm", "nrm", "nor", "n"),
         FileSpec("roughness", "rough", "rou", "r"),
         FileSpec("occlusion", ("ambient", "occlusion"), "occ", "ao"),
         FileSpec("displacement", "height", "disp", "dis", "h"),
         FileSpec("bump"),
         FileSpec("metalness", "metallness", "metallic", "metal", "mtl", "m"),
-        FileSpec("opacity","alpha"),
-        FileSpec("translucent", "trans", "translucency"),
+        FileSpec("opacity", "alpha"),
+        FileSpec("translucent", "translucency", "trans"),
         FileSpec("specular", "spec"),
         FileSpec("glossiness", "gloss"),
         FileSpec("smoothness"),
@@ -101,7 +101,7 @@ class MaterialScanner:
         FileSpec("specularLevel", ("specular", "level")),
         FileSpec("emissive", "emission"),
         FileSpec("scattering", "subsurface"),
-        FileSpec("idmask", "id"),
+        FileSpec("idmask", "mask", "id"),
         FileSpec("edge"),
         FileSpec("ref"),
     ]
