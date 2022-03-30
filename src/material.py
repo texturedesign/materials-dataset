@@ -32,6 +32,10 @@ class Material:
 
     def __init__(self, filenames: dict, uuid=None, url: str = None, tags: set = {}):
         self.hash = base58.b58encode(uuid.bytes).decode("ascii")
+        if len(self.hash) < 22:
+            self.hash = '1' + self.hash
+            assert base58.b58decode(self.hash).lstrip(b'\x00') == uuid.bytes.lstrip(b'\x00')
+
         self.url = url
         self.tags = tags
         self.filenames = filenames
