@@ -46,7 +46,12 @@ class MaterialLibrary:
         path = material_path[len(common_path) + 1 :]
         mat_tags = self.split_words(path)
 
-        name = path.split(os.path.sep)[0]
+        name = sorted(path.split(os.path.sep), key=lambda x: len(x))[-1]
+        name = name.lower().replace(' ', '_')
+        # Filter out unused prefixes, e.g. resolution, numbers, underscores.
+        name = re.match('^([0-9]{1,2}k[_-]|[_-]|[0-9]+)*(.*)$', name).group(2)
+        assert len(name) > 0
+
         mat_url = f"https://{self.name}/a/{name}"
         mat_id = uuid.uuid5(uuid.NAMESPACE_URL, mat_url)
         return dict(uuid=mat_id, url=mat_url, tags=mat_tags)
