@@ -5,17 +5,22 @@ import re
 import itertools
 import collections
 
+import numpy
 import torch
 import base58
 import imageio
 
 
 def imread(filename):
-    img = torch.from_numpy(imageio.imread(filename))
+    """
+    Load an 8-bit or 16-bit image as a float16 tensor, output in the range [0, 255].
+    """
+    arr = imageio.imread(filename)
+    if arr.dtype == numpy.uint16:
+        arr = (arr.astype(numpy.float32) / 255.0)
+    img = torch.from_numpy(arr)
     if img.ndim == 2:
         img = img.unsqueeze(-1)
-    if img.dtype == torch.int16:
-        raise NotImplementedError("16-bit images not yet supported.")
     return img.to(torch.float16)
 
 
@@ -157,7 +162,7 @@ class MaterialScanner:
                 if not self.allow_variations:
                     raise FileNotFoundError(
                         "MATERIAL_NO_VARIATIONS",
-                        "Variations found but disabled for this scanner.",
+                        f"Variations found for `{prop.name}` but disabled for this scanner.",
                     )
 
                 match_prefix = os.path.commonprefix(matches)
