@@ -90,7 +90,7 @@ class MaterialExporter:
 @click.option("--export-path", type=pathlib.Path, default="cache")
 @click.option("--export-resolution", type=tuple[int], default=(4096, 4096))
 @click.option("--export-format", type=str, default="JPG")
-@click.option("--force", type=bool, default=False)
+@click.option("--force", is_flag=True)
 def main(
     library_configs,
     operations,
