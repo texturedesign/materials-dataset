@@ -71,8 +71,16 @@ class Material:
         os.makedirs(path, exist_ok=True)
 
         for key, image in self.images.items():
-            dest = os.path.join(path, f"{key}.{format}")
-            imageio.imwrite(dest, image.to(torch.uint8), quality=quality)
+            fmt, dtype = format, numpy.uint8
+            extra = dict(quality=quality)
+
+            if key == "displacement":
+                fmt, dtype = "png", numpy.uint16
+                extra = dict(format="PNG-FI")
+                image = image * 255.0
+
+            dest = os.path.join(path, f"{key}.{fmt}")
+            imageio.imwrite(dest, image.numpy().astype(dtype), **extra)
 
 
 class FileSpec:
